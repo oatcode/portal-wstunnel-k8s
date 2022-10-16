@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: onprem-deployment
+  name: wstunnel-deployment
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: onprem
+      app: wstunnel
   template:
     metadata:
       labels:
-        app: onprem
+        app: wstunnel
     spec:
       containers:
-        - name: onprem
-          image: onprem:1.0
+        - name: wstunnel
+          image: wstunnel:1.0
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
@@ -30,23 +30,23 @@ spec:
             - name: SECRET_CERT
               valueFrom:
                 secretKeyRef:
-                  name: onprem-cert
+                  name: wstunnel-cert
                   key: tls.crt
             - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: onprem-cert
+                  name: wstunnel-cert
                   key: tls.key
             - name: JWT_CERT
               valueFrom:
                 secretKeyRef:
-                  name: onprem-cert
+                  name: wstunnel-cert
                   key: tls.crt
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: onprem-service
+  name: wstunnel-service
 spec:
   type: LoadBalancer
   ports:
@@ -54,4 +54,4 @@ spec:
       port: 8080
       targetPort: 8080
   selector:
-    app: onprem
+    app: wstunnel

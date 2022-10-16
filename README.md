@@ -1,6 +1,6 @@
 # portal-wstunnel-k8s
 
-# onprem with TLS and JWT using k8s loadbalancer
+# wstunnel with TLS and JWT using k8s loadbalancer
 
 
 ### Create certificates
@@ -25,42 +25,52 @@ Signing it with tunnel-server and assign to env JWT
 JWT=$(JWT_HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | base64 | sed s/\+/-/ | sed -E s/=+$//) && JWT_PAYLOAD=$(printf '{"tenant":"tenant1","scope":"tunnel access"}' | base64 | sed s/\+/-/ | sed -E s/=+$//) && printf '%s.%s.%s' $JWT_HEADER $JWT_PAYLOAD $(printf '%s.%s' $JWT_HEADER $JWT_PAYLOAD | openssl dgst -sha256 -binary -sign tunnel-server.key  | base64 | tr -d '\n=' | tr -- '+/' '-_'))
 ```
 
-## Start minikube tunnel server
+## Start tunnel server with minikube
 
 ```
+# To start using minikube
 minikube start
+
+# Build docker container into minikube repository
 eval $(minikube docker-env)
-docker build --tag onprem:1.0 .
-kubectl create secret tls onprem-cert --key tunnel-server.key --cert tunnel-server.crt
+docker build --tag wstunnel:1.0 .
+
+# Upload certificates
+kubectl create secret tls wstunnel-cert --key tunnel-server.key --cert tunnel-server.crt
+
+# Start Redis
 kubectl apply -f redis.yaml
-kubectl apply -f onprem.yaml
+
+# Run tunnel server in 3 replicas
+kubectl apply -f wstunnel.yaml
+
+# Expose port 8080 to outside of minikube (this blocks)
+minikube tunnel
 ```
 
 ## Start tunnel client
 
 ```
-./onprem -client -address localhost:8080 -trust tunnel-server.crt -jwt $JWT
+./examples/tunnel-client -address localhost:8080 -trust tunnel-server.crt -jwt $JWT
 ```
 
-## Start sample https sersver
+## Start https server using openssl
 
 ```
-./sample-https-server -address :10003 -cert ../https-server.crt -key ../https-server.key
+openssl s_server -cert https-server.crt -key https-server.key -accept 8081 -www
 ```
 
-## Run curl or sample https client
+## Run https client using curl
 
 ```
-curl --proxy https://localhost:8080 --proxy-cacert tunnel-server.crt --proxy-header "Proxy-Authorization: Bearer $JWT" --cacert https-server.crt https://localhost:10003/test
-
-./sample-https-client --proxy https://localhost:8080 -proxy-bearer $JWT -url https://localhost:10003/test -trust ../https-server.crt -trust tunnel-server.crt
+curl --proxy https://localhost:8080 --proxy-cacert tunnel-server.crt --proxy-header "Proxy-Authorization: Bearer $JWT" --cacert https-server.crt https://localhost:8081
 ```
 
 ## Undeploy k8s services
 
 ```
-kubectl delete service onprem-service
-kubectl delete deployment onprem-deployment
+kubectl delete service wstunnel-service
+kubectl delete deployment wstunnel-deployment
 kubectl delete service redis-service
 kubectl delete deployment redis-deployment
 ```

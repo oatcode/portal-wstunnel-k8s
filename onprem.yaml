@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: onprem-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: onprem
+  template:
+    metadata:
+      labels:
+        app: onprem
+    spec:
+      containers:
+        - name: onprem
+          image: onprem:1.0
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: REDIS_HOST
+              value: redis-service
+            - name: REDIS_PORT
+              value: "6379"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SERVER_INTERNAL_PORT
+              value: "8081"
+            - name: SECRET_CERT
+              valueFrom:
+                secretKeyRef:
+                  name: onprem-cert
+                  key: tls.crt
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: onprem-cert
+                  key: tls.key
+            - name: JWT_CERT
+              valueFrom:
+                secretKeyRef:
+                  name: onprem-cert
+                  key: tls.crt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: onprem-service
+spec:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: onprem

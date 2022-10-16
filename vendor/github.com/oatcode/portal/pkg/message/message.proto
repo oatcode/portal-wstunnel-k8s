@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package message;
+
+option go_package = "pkg/message";
+
+message Message {
+    enum Type {
+        HTTP_CONNECT = 0;
+        HTTP_CONNECT_OK = 1;
+        HTTP_SERVICE_UNAVAILABLE = 2;
+        DISCONNECTED = 3;
+        DATA = 4;
+    }
+    enum Origin {
+        ORIGIN_LOCAL = 0;
+        ORIGIN_REMOTE = 1;
+    }
+    Type type = 1;
+    Origin origin = 2;
+    int32 id = 3;
+    string socket_address = 4;
+    bytes buf = 5;
+}

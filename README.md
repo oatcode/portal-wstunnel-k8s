@@ -2,6 +2,11 @@
 
 # wstunnel with TLS and JWT using k8s loadbalancer
 
+This shows how to use the library from https://github.com/oatcode/portal to build WebSocket tunnel server running in minikube.
+- HTTP Proxy runs over TLS
+- JWT is used for authentication and determining tenant
+- Multiple replicas are used to demostrate scale and load balancing
+
 
 ### Create certificates
 
@@ -20,7 +25,7 @@ This JWT Payload contains the tenant ID:
 }
 ```
 
-Signing it with tunnel-server and assign to env JWT
+Signing it with tunnel-server.crt and assign to env JWT
 ```
 JWT=$(JWT_HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | base64 | sed s/\+/-/ | sed -E s/=+$//) && JWT_PAYLOAD=$(printf '{"tenant":"tenant1","scope":"tunnel access"}' | base64 | sed s/\+/-/ | sed -E s/=+$//) && printf '%s.%s.%s' $JWT_HEADER $JWT_PAYLOAD $(printf '%s.%s' $JWT_HEADER $JWT_PAYLOAD | openssl dgst -sha256 -binary -sign tunnel-server.key  | base64 | tr -d '\n=' | tr -- '+/' '-_'))
 ```
@@ -28,7 +33,7 @@ JWT=$(JWT_HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | base64 | sed s/\+/-/ |
 ## Start tunnel server with minikube
 
 ```
-# To start using minikube
+# Start minikube
 minikube start
 
 # Build docker container into minikube repository
@@ -54,19 +59,19 @@ minikube tunnel
 ./examples/tunnel-client -address localhost:8080 -trust tunnel-server.crt -jwt $JWT
 ```
 
-## Start https server using openssl
+## Start https server for testing
 
 ```
 openssl s_server -cert https-server.crt -key https-server.key -accept 8081 -www
 ```
 
-## Run https client using curl
+## Run https client with proxy via wstunnel
 
 ```
 curl --proxy https://localhost:8080 --proxy-cacert tunnel-server.crt --proxy-header "Proxy-Authorization: Bearer $JWT" --cacert https-server.crt https://localhost:8081
 ```
 
-## Undeploy k8s services
+## Undeploy services from minikube
 
 ```
 kubectl delete service wstunnel-service
